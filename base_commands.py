@@ -7,14 +7,26 @@ from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram.types import Message
 
 
+from keyboard import get_main_keyboard, show_schedule, create_text_schedule
 from parsing import get_group_schedule, get_group_id
-
+from aiogram import F
 base_router = Router(name=__name__)
 
 
 # Файл для хранения данных
 USER_DATA_FILE = 'user_data.json'
 
+
+@base_router.message(F.text == "Мое расписание")
+async def show_my_schedule(message: types.Message):
+    user_id = str(message.from_user.id)
+    user_data = load_user_data()
+
+    if user_id not in user_data or not user_data[user_id].get("favorite_groups"):
+        await message.answer("У вас нет избранных групп. Добавьте группу с помощью команды /addfavorite")
+        return
+
+    await show_schedule(message, user_data)
 
 # Загрузить существующие данные пользователя или создать пустой словарь
 def load_user_data():
@@ -23,12 +35,10 @@ def load_user_data():
             return json.load(file)
     return {}
 
-
 # Сохранить данные о пользователе в файл
 def save_user_data(data):
     with open(USER_DATA_FILE, 'w') as file:
         json.dump(data, file, indent=2)
-
 
 # Команда регистрации пользователя
 @base_router.message(Command("register"))
@@ -39,17 +49,17 @@ async def register_user(message: types.Message):
     user_data = load_user_data()
 
     if str(user_id) in user_data:
-        await message.answer("Вы уже зарегестрированы.")
+        await message.answer("Вы уже зарегистрированы.", reply_markup=get_main_keyboard())
         return
 
     user_data[str(user_id)] = {
         "username": username,
-        "registered_at": message.date.isoformat()
+        "registered_at": message.date.isoformat(),
+        "favorite_groups": []
     }
 
     save_user_data(user_data)
-    await message.answer("Регистрация успешна!")
-
+    await message.answer("Регистрация успешна!", reply_markup=get_main_keyboard())
 
 # Проверка статуса регистрации
 @base_router.message(Command("status"))
@@ -59,11 +69,46 @@ async def check_status(message: types.Message):
 
     if str(user_id) in user_data:
         user_info = user_data[str(user_id)]
+        favorite_groups = ", ".join(user_info.get("favorite_groups", []))
         await message.answer(
-            f"Вы зарегестрированы.\nИмя пользователя: {user_info['username']}\nВремя регистрации: {user_info['registered_at']}")
+            f"Вы зарегистрированы.\nИмя пользователя: {user_info['username']}\n"
+            f"Время регистрации: {user_info['registered_at']}\n"
+            f"Избранные группы: {favorite_groups or 'нет'}",
+            reply_markup=get_main_keyboard())
     else:
-        await message.answer("Вы не зарегестрированы. Используйте /register для регистрации.")
+        await message.answer("Вы не зарегистрированы. Используйте /register для регистрации.", reply_markup=get_main_keyboard())
 
+# Команда добавления группы в избранное
+@base_router.message(Command("addfavorite"))
+async def add_favorite_group(message: Message, command: CommandObject):
+    user_id = message.from_user.id
+    group_name = command.args
+
+    if group_name is None:
+        await message.answer('Введите название группы. \n/addfavorite БИ-22Э1 - (пример)')
+        return
+
+    group_id = get_group_id(group_name)
+
+    if group_id is None:
+        await message.answer('Такой группы не существует или вы ввели ее неправильно. \nУчитывайте регистр!!!')
+        return
+
+    user_data = load_user_data()
+
+    if str(user_id) not in user_data:
+        await message.answer("Вы не зарегистрированы. Используйте /register для регистрации.")
+        return
+
+    if "favorite_groups" not in user_data[str(user_id)]:
+        user_data[str(user_id)]["favorite_groups"] = []
+
+    if group_name in user_data[str(user_id)]["favorite_groups"]:
+        await message.answer(f"Группа {group_name} уже в избранном.")
+    else:
+        user_data[str(user_id)]["favorite_groups"].append(group_name)
+        save_user_data(user_data)
+        await message.answer(f"Группа {group_name} добавлена в избранное.")
 
 # Приветственное сообщение
 def get_start_text():
