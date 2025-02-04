@@ -6,7 +6,7 @@ import sys
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-
+from aiogram.fsm.storage.memory import MemoryStorage
 
 from base_commands import base_router
 
@@ -17,7 +17,9 @@ dp = Dispatcher()
 
 async def main() -> None:
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    dp.include_routers(base_router,)
+    storage = MemoryStorage()
+    dp = Dispatcher(storage=storage)
+    dp.include_routers(base_router)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

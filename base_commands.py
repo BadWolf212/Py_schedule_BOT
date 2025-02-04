@@ -6,8 +6,8 @@ from aiogram import Router, types
 from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram.types import Message
 
-
-from keyboard import get_main_keyboard, show_schedule, create_text_schedule
+from aiogram.types import Message, CallbackQuery
+from keyboard import get_main_keyboard, show_schedule, create_text_schedule, get_favorite_teachers_keyboard
 from parsing import get_group_schedule, get_group_id, get_teacher_id, get_teacher_schedule
 from aiogram import F
 base_router = Router(name=__name__)
@@ -27,6 +27,47 @@ async def show_my_schedule(message: types.Message):
         return
 
     await show_schedule(message, user_data)
+
+@base_router.message(F.text == "Преподаватели")
+async def show_favorite_teachers(message: types.Message):
+    user_id = str(message.from_user.id)
+    user_data = load_user_data()
+
+    if user_id not in user_data or not user_data[user_id].get("favorite_teachers"):
+        await message.answer("У вас нет избранных преподавателей. Добавьте преподавателя с помощью команды /addteacher")
+        return
+
+    favorite_teachers = user_data[user_id]["favorite_teachers"]
+    keyboard = get_favorite_teachers_keyboard(favorite_teachers)
+    await message.answer("Выберите преподавателя:", reply_markup=keyboard)
+
+
+@base_router.callback_query(F.data.startswith("t_"))
+async def show_teacher_schedule(callback_query: CallbackQuery):
+    short_name = callback_query.data.split("_", 1)[1]
+
+    # Найдите полное имя преподавателя
+    user_data = load_user_data()
+    user_id = str(callback_query.from_user.id)
+    full_name = next((t for t in user_data[user_id]["favorite_teachers"] if t.startswith(short_name)), None)
+
+    if not full_name:
+        await callback_query.answer("Преподаватель не найден.")
+        return
+
+    teacher_id = get_teacher_id(full_name)
+
+    if teacher_id is None:
+        await callback_query.answer("Ошибка: преподаватель не найден.")
+        return
+
+    schedule = get_teacher_schedule(teacher_id)
+    days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
+
+    await callback_query.answer()
+    for day in days:
+        await callback_query.message.answer(f"{create_text_schedule(schedule, day)}")
+        await asyncio.sleep(1)  # Защита от блокировки от Телеграма
 
 # Загрузить существующие данные пользователя или создать пустой словарь
 def load_user_data():
