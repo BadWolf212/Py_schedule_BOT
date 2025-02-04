@@ -1,6 +1,3 @@
-from pprint import pprint
-from shlex import shlex
-
 import requests
 import datetime
 
@@ -36,3 +33,30 @@ def get_group_schedule(group_id): # Функция для получения р�
 
     return schedule
 
+
+def get_teacher_id(teacher_name:str): # Функция для получения ID препода, по которому будем искать расписание конкретного препода
+    url = 'https://umu.sibadi.org/api/raspTeacherlist?year=2024-2025'
+
+    data = requests.get(url).json()
+    teachers_data = data['data']
+    for teacher_data in teachers_data:
+        if teacher_data['name'] == teacher_name:
+            return teacher_data['id']
+
+
+def get_teacher_schedule(teacher_id): # Функция для получения расписания препода по ее ID
+    url = f'https://umu.sibadi.org/api/Rasp?idTeacher={teacher_id}&sdate={current_date}'
+    data = requests.get(url).json()['data']['rasp']
+    teacher_schedule = \
+    {
+        'Понедельник': [],
+        'Вторник': [],
+        'Среда': [],
+        'Четверг': [],
+        'Пятница': [],
+        'Суббота': [],
+    }
+    for day in data:
+        teacher_schedule[day['день_недели']].append(day)
+
+    return teacher_schedule

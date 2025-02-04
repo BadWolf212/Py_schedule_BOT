@@ -8,7 +8,7 @@ from aiogram.types import Message
 
 
 from keyboard import get_main_keyboard, show_schedule, create_text_schedule
-from parsing import get_group_schedule, get_group_id
+from parsing import get_group_schedule, get_group_id, get_teacher_id, get_teacher_schedule
 from aiogram import F
 base_router = Router(name=__name__)
 
@@ -55,7 +55,8 @@ async def register_user(message: types.Message):
     user_data[str(user_id)] = {
         "username": username,
         "registered_at": message.date.isoformat(),
-        "favorite_groups": []
+        "favorite_groups": [],
+        "favorite_teachers":[]
     }
 
     save_user_data(user_data)
@@ -70,10 +71,12 @@ async def check_status(message: types.Message):
     if str(user_id) in user_data:
         user_info = user_data[str(user_id)]
         favorite_groups = ", ".join(user_info.get("favorite_groups", []))
+        favorite_teachers = ", ".join(user_info.get("favorite_teachers", []))
         await message.answer(
             f"Вы зарегистрированы.\nИмя пользователя: {user_info['username']}\n"
             f"Время регистрации: {user_info['registered_at']}\n"
-            f"Избранные группы: {favorite_groups or 'нет'}",
+            f"Избранные группы: {favorite_groups or 'нет'}\n"
+            f"Избранные преподаватели: {favorite_teachers or 'нет'}",
             reply_markup=get_main_keyboard())
     else:
         await message.answer("Вы не зарегистрированы. Используйте /register для регистрации.", reply_markup=get_main_keyboard())
@@ -109,6 +112,37 @@ async def add_favorite_group(message: Message, command: CommandObject):
         user_data[str(user_id)]["favorite_groups"].append(group_name)
         save_user_data(user_data)
         await message.answer(f"Группа {group_name} добавлена в избранное.")
+
+@base_router.message(Command("addteacher"))
+async def add_favorite_teacher(message: Message, command: CommandObject):
+    user_id = message.from_user.id
+    teacher_name = command.args
+
+    if teacher_name is None:
+        await message.answer('Введите имя преподавателя. \n/addteacher Иванов И.И. - (пример)')
+        return
+
+    teacher_id = get_teacher_id(teacher_name)
+
+    if teacher_id is None:
+        await message.answer('Такого преподавателя не существует или вы ввели его имя неправильно. \nУчитывайте регистр!!!')
+        return
+
+    user_data = load_user_data()
+
+    if str(user_id) not in user_data:
+        await message.answer("Вы не зарегистрированы. Используйте /register для регистрации.")
+        return
+
+    if "favorite_teachers" not in user_data[str(user_id)]:
+        user_data[str(user_id)]["favorite_teachers"] = []
+
+    if teacher_name in user_data[str(user_id)]["favorite_teachers"]:
+        await message.answer(f"Преподаватель {teacher_name} уже в избранном.")
+    else:
+        user_data[str(user_id)]["favorite_teachers"].append(teacher_name)
+        save_user_data(user_data)
+        await message.answer(f"Преподаватель {teacher_name} добавлен в избранное.")
 
 # Приветственное сообщение
 def get_start_text():
@@ -156,6 +190,27 @@ async def command_start_handler(message: Message, command: CommandObject) -> Non
     for day in days:
         await message.answer(f"{create_text_schedule(schedule, day)}")
         await asyncio.sleep(1) # Защита от блокировки от Телеграма
+
+@base_router.message(Command('teacher'))
+async def command_start_handler(message: Message, command: CommandObject) -> None:
+    teacher_name = command.args
+    if teacher_name is None:
+        await message.answer('Введите имя препода. \n/teacher Толкачева Елена Викторовна - (пример)')
+        return
+
+    teacher_id = get_teacher_id(teacher_name)
+
+    if teacher_id is None:
+        await message.answer('Не нашел такого преподавателя :(. \nПопробуйте написать фамилию, имя и отчество полностью')
+        return
+
+    schedule = get_teacher_schedule(teacher_id)
+    days = ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота']
+
+    for day in days:
+        await message.answer(f"{create_text_schedule(schedule, day)}")
+        await asyncio.sleep(1) # Защита от блокировки от Телеграма
+
 
 
 @base_router.message()
