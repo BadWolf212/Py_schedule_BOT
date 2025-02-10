@@ -191,21 +191,6 @@ def get_start_text():
         text = file.read()
     return text
 
-#def create_text_schedule(schedule, day):
-#    txt = ''
-#    txt+=f'{day}\n'
-#    lessons = schedule[day]
-#    for lesson in lessons:
-#        txt += f'Дисциплина: {lesson["дисциплина"]}\n'
-#        txt += f'Аудитория: {lesson["аудитория"]}\n'
-#       txt += f'Номер занятия: {lesson["номерЗанятия"]}\n'
-#        txt += f'Преподаватель: {lesson["фиоПреподавателя"]}\n'
-#        txt += f'Время: {lesson["начало"][:5]} -- {lesson["конец"][:5]}\n'
-#        txt += '\n ***************************************\n\n'
-#    if txt == f'{day}\n':
-#        return f'В {day} пар нет, отдыхай!'
-#
-#    return txt
 
 @base_router.message(CommandStart())
 async def command_current_handler(message: Message) -> None:

@@ -17,3 +17,5 @@ def create_text_schedule(schedule, day):
         return f'В {day} пар нет, отдыхай!'
 
     return txt
+
+

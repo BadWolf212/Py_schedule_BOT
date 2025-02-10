@@ -43,18 +43,3 @@ async def show_schedule(message: types.Message, user_data):
         await message.answer(f"{create_text_schedule(schedule, day)}")
         await asyncio.sleep(1)  # Защита от блокировки от Телеграма
 
-
-
-#def create_text_schedule(schedule, day):
-#    txt = f'{day}\n'
-#    lessons = schedule[day]
-#    for lesson in lessons:
-#        txt += f'Дисциплина: {lesson["дисциплина"]}\n'
-#        txt += f'Аудитория: {lesson["аудитория"]}\n'
-#        txt += f'Номер занятия: {lesson["номерЗанятия"]}\n'
-#        txt += f'Преподаватель: {lesson["фиоПреподавателя"]}\n'
-#        txt += f'Время: {lesson["начало"][:5]} -- {lesson["конец"][:5]}\n'
-#        txt += '\n ***************************************\n\n'
-#    if txt == f'{day}\n':
-#        return f'В {day} пар нет, отдыхай!'
-#    return txt
